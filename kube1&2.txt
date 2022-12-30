@@ -1,0 +1,354 @@
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 4646 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 4647 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 4648 -j ACCEPT
+sudo netfilter-persistent save
+
+
+sudo kubeadm init --apiserver-cert-extra-sans=kube1.ashburn.alitech.uk,150.136.62.0,150.136.52.187 --pod-network-cidr=10.0.5.0/12 --control-plane-endpoint=kube1.ashburn.alitech.uk --upload-certs --certificate-key=$CERTKEY
+
+
+
+sudo kubeadm init --apiserver-cert-extra-sans=kube2.ashburn.alitech.uk,150.136.62.0,150.136.52.187 --pod-network-cidr=10.0.5.0/12 --control-plane-endpoint=kube2.ashburn.alitech.uk --upload-certs --certificate-key=$CERTKEY
+
+
+export KUBECONFIG=/etc/kubernetes/admin.conf
+
+kubeadm join master.alitech.io:6443 --token uyu0mu.z3qb0yxvsb7eropq \
+        --discovery-token-ca-cert-hash sha256:30a4db8e605d82160d79f9e05c496529d78c0734a0a1ee116e62311298d357eb
+
+- {name: master, address: 132.145.43.144, internalAddress: 10.0.2.224, privateKeyPath: "~/.ssh/id_rsa", arch: arm64}
+  - {name: ks3, address: 138.2.30.84, internalAddress: 10.0.0.33, privateKeyPath: "~/.ssh/id_rsa", arch: arm64}
+  - {name: ks4, address: 141.147.164.202, internalAddress: 10.0.0.212, privateKeyPath: "~/.ssh/id_rsa", arch: arm64}
+
+
+132.145.43.144  master.alitech.io       master
+168.138.196.151 ks3.jp.alitech.io       ks3
+155.248.170.41  ks4.jp.alitech.io       ks4
+
+hostnamectl set-hostname master
+
+on master
+ssh-keygen -t rsa
+
+on nodes
+nano ~/.ssh/authorized_keys
+nano /etc/ssh/sshd_config
+systemctl restart sshd
+
+
+
+DEFAULT STORAGE CLASS
+kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+to remove default-class
+kubectl patch storageclass standard -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+
+
+
+TERMINATING NAMESPACE
+
+kubectl get namespace cattle-fleet-system -o json > tmp.json
+curl -k -H "Content-Type: application/json" -X PUT --data-binary @tmp.json http://127.0.0.1:8001/api/v1/namespaces/longhorn-system/finalize
+
+
+
+
+
+WEAVE NETWORK WORKS BEST FOR ARM64
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+
+https://stackoverflow.com/questions/52119985/kubeadm-init-shows-kubelet-isnt-running-or-healthy
+
+I faced similar issue recently. The problem was cgroup driver. Kubernetes cgroup driver was set to systems but docker was set to systemd. So I created '/etc/docker/daemon.json' and added below:
+
+{
+"exec-opts": ["native.cgroupdriver=systemd"]
+}
+Then
+
+ systemctl daemon-reload
+ systemctl restart docker
+ systemctl restart kubelet
+Run kubeadm init or kubeadm join again.
+
+
+CERTKEY=$(kubeadm certs certificate-key)
+echo $CERTKEY
+
+
+https://k21academy.com/docker-kubernetes/the-connection-to-the-server-localhost8080-was-refused/
+
+Fix the Error – The connection to the server localhost:8080 was refused
+
+1. Check if the kubeconfig environment variable is exported if not exported
+
+export KUBECONFIG=/etc/kubernetes/admin.conf or $HOME/.kube/config
+2. Check your  .kube or config in the home directory file. If you did not found it, then you need to move that to the home directory. using the following command
+
+cp /etc/kubernetes/admin.conf $HOME/
+chown $(id -u):$(id -g) $HOME/admin.conf
+export KUBECONFIG=$HOME/admin.conf
+Whenever you are starting Master Node you may require to set the environment variable. Hence it’s a repetitive task for you. It can be set permanently using the following command.
+
+echo 'export KUBECONFIG=$HOME/admin.conf' >> $HOME/.bashrc
+
+
+
+remove all taints from master
+kubectl patch node master -p '{"spec":{"taints":[]}}'
+
+
+
+
+
+
+
+https://support.oracle.com/cloud/faces/DocumentDisplay?_afrLoop=381310497961310&_afrWindowMode=0&id=2557732.1&_adf.ctrl-state=4prxtisqs_4
+
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9098 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9099 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9090 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9100 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9443 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9796 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8001 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 2376 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 2379:2380 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 6443 -j ACCEPT  
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9098:9100 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 179 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 30000:32767 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 10250:10258 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5000 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5080 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5432 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 111 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8443 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8472 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 45014 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9500 -j ACCEPT
+sudo netfilter-persistent save
+
+calico
+
+sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 4789 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5473 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9500 -j ACCEPT
+
+tcp 80,443,9090,9100,9443,9796,8080,8001,2376,2379-2380,6443,6783-6784,9098-9100,179,30000-32767,10250-10258,53,5000,5080,5432,111,8443,8472,45014
+udp 53, 6783-6784
+
+
+sudo netfilter-persistent save
+
+AUTHENTIK
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9000 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9300 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9443 -j ACCEPT 
+
+
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9090 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9100 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9796 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8080 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8001 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 2376 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 2379:2380 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 6443 -j ACCEPT  
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9099:9100 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 179 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 30000:32767 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 10250:10258 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p udp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5000 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5080 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5432 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 111 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8472 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 45014 -j ACCEPT 
+
+
+
+REDIS
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 6379 -j ACCEPT
+
+mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+export KUBECONFIG=/etc/kubernetes/admin.conf
+
+
+Get a shell to the running container:
+
+kubectl exec --stdin --tty <pod-name> -- /bin/sh
+
+
+Syntax:
+kubectl cp <file-spec-src> <file-spec-dest>
+POD in a specific container
+kubectl cp <file-spec-src> <file-spec-dest> -c <specific-container>
+Copy /tmp/foo local file to /tmp/bar in a remote pod in namespace
+kubectl cp /tmp/foo <some-namespace>/<some-pod>:/tmp/bar
+Copy /tmp/foo from a remote pod to /tmp/bar locally
+kubectl cp <some-namespace>/<some-pod>:/tmp/foo /tmp/bar
+Link: https://youtu.be/66ibYdQGfic
+
+
+permission error inside pod
+chmod a+rw db.sqlite3 /etc/app
+
+
+Docker file
+RUN chmod a+rw db.sqlite3 $WORK_HOME/db.sqlite3
+
+
+Kubernetes dashboard
+eyJhbGciOiJSUzI1NiIsImtpZCI6IlFTMEhGMk9rbGpFcmxyUUZNWGlJR0lDd2dST1dEbHhtektBNzJtaXZodkEifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbmlzdHJhdG9yLXRva2VuLXJkcmN2Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluaXN0cmF0b3IiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiIyYzA4Mzc5Zi0zM2ExLTRmMzAtOTUyMi03NTc4Nzk0ZTczYzAiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW5pc3RyYXRvciJ9.n3HaNzBPNPrqVUT5fO7aN-fK32avUz2JsQF-s-RedoxkZ1BjuQrU9dL9UZrj8VfitmG6X5nwoxcj2i8KFBqGCx2Th4BTRoNafMLhILEEmOQUlxhYUVWap84DP4Kp5Z3soISqhRR97KijPGkYXiTFzoJ-EkXQ_ZMN-Ou0sdK59Wb7v00v7Y1mkmLcQZmI2JZUM2EBtPlHI5V8SfUl0Em5xL8OzIUAj16hrWFw1FRd-VNleL0JfPCr7i8KSd7HxkHpJwCT20x2VR_CbPbpZajB3LqG1bqg6Fk9OJh6_tNW5RhJpYgvFnhQ4BPKZph369gKf_9lU6Zxdlkgmrb1fRxvlw
+
+
+
+kubeadm join master.alitech.io:6443 --token 3vz7n2.kjtsgckcubiiy80a --discovery-token-ca-cert-hash sha256:55e4a83a0fa861234838e784f12c2a830cb888919df4fddf382d721426f0b478
+
+
+
+Rancher
+vzgr5kz47qsgk4c9rgr4g6ds2t9sddnqbmj76tps7pzqv4qmrz4t2w
+
+
+
+docker build -t hostingbyalitech/souq:latest .
+
+docker image push hostingbyalitech/souq:latest
+
+kubectl create -f souq.yaml
+
+
+############################################################
+
+
+RANCHER 
+
+FIRST LOGIN PASSWORD
+
+cat /root/.kube/config
+
+KUBECONFIG=/root/.kube/config
+
+kubectl --kubeconfig $KUBECONFIG -n cattle-system exec $(kubectl --kubeconfig $KUBECONFIG -n cattle-system get pods -l app=rancher | grep '1/1' | head -1 | awk '{ print $1 }') -- reset-password
+
+132.145.56.200:30353    
+
+
+kubectl exec --stdin --tty wordpress-mysql-f8f5ffb76-hzn26 -- /bin/bash
+
+kubectl exec -i -t -n default souqdelivery-5f87c7cd9b-2j52z
+
+kubectl cp wp-content wordpress-5dc55bbb77-4dmsj:/var/www/html
+
+
+ mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join master.alitech.io:6443 --token lri81p.xm2g9organnth931 \
+        --discovery-token-ca-cert-hash sha256:9959189f54de469b039cff88204e66b817412e7c6f923ff316c0edf372e03715
+
+
+
+
+
+if coredns pending
+
+kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
+
+also 
+
+sudo apt-get update -y
+
+sudo apt-get upgrade -y
+
+
+
+
+
+[ERROR CRI]: container runtime is not running: output: 
+
+rm /etc/containerd/config.toml
+systemctl restart containerd
+
+
+
+
+
+
+longhorn pending / container creating
+
+curl https://raw.githubusercontent.com/longhorn/longhorn/v1.2.0/deploy/longhorn.yaml | sed -e 's/#- name: KUBELET_ROOT_DIR/- name: KUBELET_ROOT_DIR/g' -e 's$#  value: /var/lib/rancher/k3s/agent/kubelet$  value: /var/snap/microk8s/common/var/lib/kubelet$g' | kubectl apply -f -
+
+
+
+Install Flannel for the Pod Network (On Master Node)
+We need to install the pod network before the cluster can come up. As such we want to install the latest yaml file that flannel provides. Most installations will use the following:
+
+kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+
+
+
+sudo kubeadm reset
+sudo rm -rf /etc/kubernetes
+sudo rm -rf /etc/cni/net.d
+sudo rm -rf /var/lib/kubelet
+sudo rm -rf /var/lib/etcd
+sudo rm -rf $HOME/.kube
+
+##########################
+
+
+
+## WORDPRESS
+
+## nginx ingress request entity too large
+
+For future searchs, It works for me:
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  name: docker-registry
+  namespace: docker-registry
+spec:
+
+
+
+
+
+## LETSENCRYPT & OPENSSL
+
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -out alitechingress-tls.crt -keyout alitechingress-tls.key -subj "/CN=beta.alitech.io/O=alitechingress-tls"
+
+kubectl create secret tls alitechingress-tls --namespace default --key alitechingress-tls.key --cert alitechingress-tls.crt
