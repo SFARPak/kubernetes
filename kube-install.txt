@@ -151,6 +151,7 @@ kubeadm join master.ks1.us.alitech.io:6443 --token sf8rq4.kmjnjqfouba4mma5 \
         --control-plane --certificate-key 55efb5e77fb0259e2ddd30872e0c90ce368a0d719a251971c419ec4145dbead5
 
 
+##You should use this command on your each node in order to join them with the master.
 
 Then you can join any number of worker nodes by running the following on each as root:
 
