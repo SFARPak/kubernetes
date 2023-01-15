@@ -1,13 +1,3 @@
-SET PATH=C:\Program Files\Nodejs;%PATH%
-
-
-
-- {name: master, address: 150.136.108.239, internalAddress: 10.0.10.117, privateKeyPath: "~/.ssh/id_rsa", arch: arm64}
-  - {name: ks2, address: 150.136.248.222, internalAddress: 10.0.20.220, privateKeyPath: "~/.ssh/id_rsa", arch: arm64}
-  - {name: ks3, address: 	132.145.215.58, internalAddress: 10.0.30.192, privateKeyPath: "~/.ssh/id_rsa", arch: amd64}
-  - {name: ks3, address: 	150.136.58.214, internalAddress: 10.0.40.152, privateKeyPath: "~/.ssh/id_rsa", arch: amd64}
-
-
 sudo passwd
 
 nano /etc/hosts
@@ -161,6 +151,7 @@ kubeadm join master.ks1.us.alitech.io:6443 --token sf8rq4.kmjnjqfouba4mma5 \
         --control-plane --certificate-key 55efb5e77fb0259e2ddd30872e0c90ce368a0d719a251971c419ec4145dbead5
 
 
+##You should use this command on your each node in order to join them with the master.
 
 Then you can join any number of worker nodes by running the following on each as root:
 
