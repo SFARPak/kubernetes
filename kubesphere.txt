@@ -1,0 +1,130 @@
+SET PATH=C:\Program Files\Nodejs;%PATH%
+
+
+
+- {name: master, address: 10.0.10.139, internalAddress: 10.0.10.139, privateKeyPath: "~/.ssh/id_rsa", arch: arm64}
+  - {name: node1, address: 10.0.20.170, internalAddress: 10.0.20.170, privateKeyPath: "~/.ssh/id_rsa", arch: arm64}
+  - {name: ks3, address: 	10.0.30.24, internalAddress: 10.0.30.90, privateKeyPath: "~/.ssh/id_rsa", arch: amd64}
+
+
+sudo passwd
+
+nano /etc/hosts
+
+10.0.10.139	master.us.alitech.io       master
+10.0.20.170 node1.us.alitech.io       node1
+10.0.30.24	node2.us.alitech.io       node2
+
+hostnamectl set-hostname master
+
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9098 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9099 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9090 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9100 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9443 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9796 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8001 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 2376 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 2379:2380 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 6443 -j ACCEPT  
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9098:9100 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 179 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 30000:32767 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 10250:10258 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5000 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5080 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5432 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 111 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8443 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8472 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 45014 -j ACCEPT 
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9500 -j ACCEPT
+sudo netfilter-persistent save
+
+
+## 3. Installing runtime or Docker Engine
+Update the apt package index and install packages to allow apt to use a repository over HTTPS:
+
+sudo apt-get update
+
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release -y
+	
+	
+	
+Add Docker’s official GPG key:
+
+ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+ 
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  
+Install Docker Engine
+
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+
+
+## 4. Configure systemd driver
+create or edit /etc/docker/daemon.json
+
+nano /etc/docker/daemon.json
+
+{
+  "exec-opts": ["native.cgroupdriver=systemd"]
+}
+
+
+sudo systemctl restart docker
+
+
+
+apt install socat conntrack ebtables ipset
+
+nano /etc/resolv.conf
+ 
+nameserver 1.1.1.1
+
+
+
+#####################
+
+KUBESPHERE
+
+curl -sfL https://get-kk.kubesphere.io | VERSION=v2.2.1 sh - 
+
+chmod +x kk
+
+./kk create cluster --with-kubernetes v1.22.10 --with-kubesphere v3.3.0
+
+
+
