@@ -1,0 +1,522 @@
+sudo passwd
+
+nano /etc/hosts
+
+150.136.107.243	master.ks1.us.alitech.io       master
+129.213.105.57	ks2.us.alitech.io       ks2
+150.136.77.132	ks3.us.alitech.io       ks3
+
+hostnamectl set-hostname master
+
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9098 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9099 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9090 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9100 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9796 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8080 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8001 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 2376 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 2379:2380 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 6443 -j ACCEPT  
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p udp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9098:9100 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 179 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 30000:32767 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 10250:10258 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p udp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5000 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5080 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5432 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 111 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8472 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 45014 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9500 -j ACCEPT
+sudo netfilter-persistent save
+
+
+## 3. Installing runtime or Docker Engine
+Update the apt package index and install packages to allow apt to use a repository over HTTPS:
+
+sudo apt-get update
+
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release -y
+	
+	
+	
+Add Docker’s official GPG key:
+
+ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+ 
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  
+Install Docker Engine
+
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+
+
+## 4. Configure systemd driver
+create or edit /etc/docker/daemon.json
+
+nano /etc/docker/daemon.json
+
+{
+  "exec-opts": ["native.cgroupdriver=systemd"]
+}
+
+
+sudo systemctl restart docker
+
+
+
+## 5. Installing kubeadm, kubelet and kubectl
+Update the apt package index and install packages needed to use the Kubernetes apt repository:
+
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl
+
+
+Download the Google Cloud public signing key:
+
+sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+
+Add the Kubernetes apt repository:
+
+echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt-get update
+sudo apt-get install -y kubelet=1.21.5-00 kubeadm=1.21.5-00 kubectl=1.21.5-00
+
+
+
+<<<< ---- ## Run this ONLY on Control Plane ## ---- >>>>
+
+CERTKEY=$(kubeadm certs certificate-key)
+
+echo $CERTKEY
+
+
+## US MASTER
+sudo kubeadm init --apiserver-cert-extra-sans=master.us.alitech.io,150.136.161.89,132.145.214.76,129.213.61.64 --pod-network-cidr=10.32.0.0/12 --control-plane-endpoint=master.us.alitech.io --upload-certs --certificate-key=$CERTKEY
+
+## JP MASTER
+sudo kubeadm init --apiserver-cert-extra-sans=master.ks1.uksjp.alitech.io,132.145.53.2,141.147.74.87,132.226.130.45 --pod-network-cidr=10.32.0.0/12 --control-plane-endpoint=master.ks1.uksjp.alitech.io --upload-certs --certificate-key=$CERTKEY
+
+
+## Non root
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+## ROOT
+export KUBECONFIG=/etc/kubernetes/admin.conf
+
+
+
+You can now join any number of the control-plane node running the following command on each as root:
+
+kubeadm join master.ks1.us.alitech.io:6443 --token sf8rq4.kmjnjqfouba4mma5 \
+        --discovery-token-ca-cert-hash sha256:dbd82e6e86404882bf0507fc7319fd091c315208e8701d4cdce6b5ebcdc54bc0 \
+        --control-plane --certificate-key 55efb5e77fb0259e2ddd30872e0c90ce368a0d719a251971c419ec4145dbead5
+
+
+##You should use this command on your each node in order to join them with the master.
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join master.ks1.us.alitech.io:6443 --token sf8rq4.kmjnjqfouba4mma5 \
+        --discovery-token-ca-cert-hash sha256:dbd82e6e86404882bf0507fc7319fd091c315208e8701d4cdce6b5ebcdc54bc0
+
+
+
+## POD Network
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml
+
+Update
+
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.5/manifests/tigera-operator.yaml
+
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.24.5/manifests/custom-resources.yaml
+
+
+
+## RESULT
+NAMESPACE     NAME                             READY   STATUS    RESTARTS   AGE
+kube-system   coredns-558bd4d5db-97jsz         1/1     Running   0          2m56s
+kube-system   coredns-558bd4d5db-gh6lk         1/1     Running   0          2m56s
+kube-system   etcd-master                      1/1     Running   0          3m11s
+kube-system   kube-apiserver-master            1/1     Running   0          3m11s
+kube-system   kube-controller-manager-master   1/1     Running   0          3m11s
+kube-system   kube-proxy-9g4rm                 1/1     Running   0          2m56s
+kube-system   kube-scheduler-master            1/1     Running   0          3m11s
+kube-system   weave-net-qk7k9                  2/2     Running   1          118s
+
+
+## LOAD BALANCER
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.9.6/manifests/namespace.yaml
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.9.6/manifests/metallb.yaml
+
+##layer2metallb.yaml
+
+nano layer2metallb.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+	  ########### Update for each region
+      - 150.136.136.85/32 
+      - 150.136.109.16/32
+	    - 132.145.217.45/32
+	  
+	  
+	  
+	
+kubectl apply -f layer2metallb.yaml
+	  
+	  
+	  
+## Metallb secret
+kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
+
+
+NAMESPACE        NAME                             READY   STATUS    RESTARTS   AGE
+kube-system      coredns-558bd4d5db-97jsz         1/1     Running   0          7m16s
+kube-system      coredns-558bd4d5db-gh6lk         1/1     Running   0          7m16s
+kube-system      etcd-master                      1/1     Running   0          7m31s
+kube-system      kube-apiserver-master            1/1     Running   0          7m31s
+kube-system      kube-controller-manager-master   1/1     Running   0          7m31s
+kube-system      kube-proxy-9g4rm                 1/1     Running   0          7m16s
+kube-system      kube-scheduler-master            1/1     Running   0          7m31s
+kube-system      weave-net-qk7k9                  2/2     Running   1          6m18s
+metallb-system   controller-64f86798cc-kqz8k      0/1     Pending   0          99s           <---- PENDING
+metallb-system   speaker-jr76f                    1/1     Running   0          99s
+
+
+
+## REMOVE TAINTS
+kubectl taint nodes --all node-role.kubernetes.io/master-
+
+
+NAMESPACE        NAME                             READY   STATUS    RESTARTS   AGE
+kube-system      coredns-558bd4d5db-97jsz         1/1     Running   0          11m
+kube-system      coredns-558bd4d5db-gh6lk         1/1     Running   0          11m
+kube-system      etcd-master                      1/1     Running   0          11m
+kube-system      kube-apiserver-master            1/1     Running   0          11m
+kube-system      kube-controller-manager-master   1/1     Running   0          11m
+kube-system      kube-proxy-9g4rm                 1/1     Running   0          11m
+kube-system      kube-scheduler-master            1/1     Running   0          11m
+kube-system      weave-net-qk7k9                  2/2     Running   1          10m
+metallb-system   controller-64f86798cc-kqz8k      1/1     Running   0          5m24s          <---- WORKS
+metallb-system   speaker-jr76f                    1/1     Running   0          5m24s
+
+
+
+## HELM INSTALL
+
+curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
+sudo apt-get install apt-transport-https --yes
+echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
+
+## INGRESS CONTROLLER - NGINX
+
+kubectl create ns ingress-nginx
+
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+helm repo update
+
+helm show values ingress-nginx/ingress-nginx > ingress-nginx.yaml
+
+
+
+
+129.213.165.30	master.ks1.us.alitech.io       master
+129.213.105.190	ks2.us.alitech.io       ks2
+129.213.50.29	ks3.us.alitech.io       ks3
+
+
+## EDIT ingress-nginx.yaml
+
+nano ingress-nginx.yaml
+
+hostNetwork: true ## change to false
+#...
+hostPort:
+  enabled: false ## change to true
+#...
+kind: Deployment ## change to DaemonSet
+#...
+externalIPs: [] ## change to below
+externalIPs:
+		  - 150.136.161.89
+		  - 132.145.214.76
+		  - 129.213.61.64
+	  
+	  
+
+#...
+loadBalancerSourceRanges: [] ## change to below
+loadBalancerSourceRanges:
+      - 150.136.161.89/32 
+      - 132.145.214.76/32
+	  - 129.213.61.64/32
+
+
+## INSTALL INGRESS NGINX
+
+helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --values ingress-nginx.yaml
+
+
+
+NAMESPACE        NAME                             READY   STATUS    RESTARTS   AGE
+ingress-nginx    ingress-nginx-controller-sjh4z   1/1     Running   0          22s
+kube-system      coredns-558bd4d5db-97jsz         1/1     Running   0          19m
+kube-system      coredns-558bd4d5db-gh6lk         1/1     Running   0          19m
+kube-system      etcd-master                      1/1     Running   0          19m
+kube-system      kube-apiserver-master            1/1     Running   0          19m
+kube-system      kube-controller-manager-master   1/1     Running   0          19m
+kube-system      kube-proxy-9g4rm                 1/1     Running   0          19m
+kube-system      kube-scheduler-master            1/1     Running   0          19m
+kube-system      weave-net-qk7k9                  2/2     Running   1          18m
+metallb-system   controller-64f86798cc-kqz8k      1/1     Running   0          13m
+metallb-system   speaker-jr76f                    1/1     Running   0          13m
+
+
+## CERT MANAGER with LETSENCRYPT
+
+kubectl create ns cert-manager
+
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.1/cert-manager.yaml
+
+NAMESPACE        NAME                                       READY   STATUS    RESTARTS   AGE
+cert-manager     cert-manager-7dd5854bb4-j2slh              1/1     Running   0          25s
+cert-manager     cert-manager-cainjector-64c949654c-559s6   1/1     Running   0          25s
+cert-manager     cert-manager-webhook-6b57b9b886-4n9g5      1/1     Running   0          25s
+ingress-nginx    ingress-nginx-controller-sjh4z             1/1     Running   0          111s
+kube-system      coredns-558bd4d5db-97jsz                   1/1     Running   0          20m
+kube-system      coredns-558bd4d5db-gh6lk                   1/1     Running   0          20m
+kube-system      etcd-master                                1/1     Running   0          20m
+kube-system      kube-apiserver-master                      1/1     Running   0          20m
+kube-system      kube-controller-manager-master             1/1     Running   0          20m
+kube-system      kube-proxy-9g4rm                           1/1     Running   0          20m
+kube-system      kube-scheduler-master                      1/1     Running   0          20m
+kube-system      weave-net-qk7k9                            2/2     Running   1          19m
+metallb-system   controller-64f86798cc-kqz8k                1/1     Running   0          14m
+metallb-system   speaker-jr76f                              1/1     Running   0          14m
+
+
+## LETSENCRYPT prod-issuer.yaml
+
+nano prod-issuer.yaml
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: sales@alitech.io
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - selector: {}
+      http01:
+        ingress:
+          class: nginx
+
+
+
+kubectl apply -f prod-issuer.yaml
+
+
+
+kubectl create secret tls alitechingress-tls --namespace default --key alitechingress-tls.key --cert alitechingress-tls.crt
+
+
+
+## LONGHORN <<<< WORKING BEST 
+
+
+
+## DEFAULT STORAGE CLASS
+
+kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+
+
+kubectl patch storageclass openebs-lvmpv -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+
+## UPGRRADE LONGHORN
+
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.2.4/deploy/longhorn.yaml
+
+
+## LONGHORN ALTERNATIVE OPENEBS
+
+https://openebs.io/docs
+
+
+
+
+
+
+
+## test-tls-deploy.yml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test-tls-deploy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: test
+  name: test-tls-deploy
+  labels:
+    app: test
+spec:
+  selector:
+    matchLabels:
+      app: test
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      containers:
+        - name: test
+          image: nginx
+          ports:
+            - containerPort: 80
+              name: test
+          resources:
+            requests:
+              memory: "100Mi"
+              cpu: "100m"
+            limits:
+              memory: "500Mi"
+              cpu: "500m"
+      affinity:
+        podAntiAffinity: ## spread pods across nodes
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - test
+              topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: test
+  name: test-tls-service
+  labels:
+    app: test
+spec:
+  selector:
+    app: test
+  type: NodePort
+  ports:
+    - port: 80 ## match with ingress
+      targetPort: 80 ## match with deployment
+      protocol: TCP
+      name: test
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: test
+  name: test-tls-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - www.yourwebappdomain.tk
+      secretName: test-tls-secret
+  rules:
+    - host: www.yourwebappdomain.tk
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: test-tls-service
+                port:
+                  number: 80
+				  
+
+
+
+kubectl apply -f test-tls-deploy.yml				  
+				  
+				  
+				  
+## LENS
+
+kubectl config view --minify --raw
+
+
+
+<<<<<< RESET >>>>>>
+
+sudo kubeadm reset
+sudo rm -rf /etc/kubernetes
+sudo rm -rf /etc/cni/net.d
+sudo rm -rf /var/lib/kubelet
+sudo rm -rf /var/lib/etcd
+sudo rm -rf $HOME/.kube

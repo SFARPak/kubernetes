@@ -144,7 +144,7 @@ sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5473 -j ACCEPT
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9500 -j ACCEPT
 
 tcp 80,443,9090,9100,9443,9796,8080,8001,2376,2379-2380,6443,6783-6784,9098-9100,179,30000-32767,10250-10258,53,5000,5080,5432,111,8443,8472,45014
-udp 53, 6783-6784
+udp 53,6783-6784
 
 
 sudo netfilter-persistent save
@@ -352,3 +352,33 @@ spec:
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -out alitechingress-tls.crt -keyout alitechingress-tls.key -subj "/CN=beta.alitech.io/O=alitechingress-tls"
 
 kubectl create secret tls alitechingress-tls --namespace default --key alitechingress-tls.key --cert alitechingress-tls.crt
+
+
+
+
+## Kubernetes agent
+
+Connect a Kubernetes cluster
+Agent access token:
+
+vDVk2LqUQWBpH_y8nanDwBGyuN7SfN2ta_ymLm7y66L1fH1zfw
+
+The agent uses the token to connect with GitLab.
+
+You cannot see this token again after you close this window.
+Install using Helm (recommended)
+
+From a terminal, connect to your cluster and run this command. The token is included in the command. Use a Helm version compatible with your Kubernetes version (see Helm version support policy ).
+
+helm repo add gitlab https://charts.gitlab.io
+helm repo update
+helm upgrade --install netnet gitlab/gitlab-agent \
+    --namespace gitlab-agent-netnet \
+    --create-namespace \
+    --set image.tag=v15.7.0 \
+    --set config.token=vDVk2LqUQWBpH_y8nanDwBGyuN7SfN2ta_ymLm7y66L1fH1zfw \
+    --set config.kasAddress=ws://gitlab.netnet.alitech.io/-/kubernetes-agent/
+
+Advanced installation methods
+
+View the documentation for advanced installation. Ensure you have your access token available.
