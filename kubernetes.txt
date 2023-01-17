@@ -3,7 +3,7 @@ sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 4647 -j ACCEPT
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 4648 -j ACCEPT
 sudo netfilter-persistent save
 
-
+ 
 sudo kubeadm init --apiserver-cert-extra-sans=kube1.ashburn.alitech.uk,150.136.62.0,150.136.52.187 --pod-network-cidr=10.0.5.0/12 --control-plane-endpoint=kube1.ashburn.alitech.uk --upload-certs --certificate-key=$CERTKEY
 
 
