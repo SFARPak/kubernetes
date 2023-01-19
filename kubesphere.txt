@@ -11,11 +11,20 @@ sudo passwd
 
 nano /etc/hosts
 
-10.0.10.139	master.us.alitech.io       master
-10.0.20.170 node1.us.alitech.io       node1
-10.0.30.24	node2.us.alitech.io       node2
+10.0.10.139	master.de.alitech.io       master
+10.0.20.170 node1.de.alitech.io       node1
+10.0.30.24	node2.de.alitech.io       node2
 
 hostnamectl set-hostname master
+
+on master
+ssh-keygen -t rsa
+
+on nodes
+nano ~/.ssh/authorized_keys
+nano /etc/ssh/sshd_config
+systemctl restart sshd
+
 
 
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -120,11 +129,21 @@ nameserver 1.1.1.1
 
 KUBESPHERE
 
-curl -sfL https://get-kk.kubesphere.io | VERSION=v2.2.1 sh - 
+curl -sfL https://get-kk.kubesphere.io | VERSION=v3.0.2 sh -
 
 chmod +x kk
 
-./kk create cluster --with-kubernetes v1.22.10 --with-kubesphere v3.3.0
+./kk create cluster --with-kubernetes v1.22.12 --with-kubesphere v3.3.1
+
+
+To create config
+
+./kk create config --with-kubernetes v1.22.12 --with-kubesphere v3.3.1
+
+
+To delete cluster
+
+./kk delete cluster --with-kubernetes v1.22.12 --with-kubesphere v3.3.1
 
 
 
