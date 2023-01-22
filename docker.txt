@@ -1,0 +1,18 @@
+Build image
+
+docker build . -t <imagerepo>/<imageName>
+
+
+List All Images
+
+docker image ls
+
+
+Tag Image to Local registry
+
+docker tag <imagerepo>/<imageName> hub.domain.local:5000/<imagerepo>/<imageName>
+
+
+Push to local registry
+
+docker push hub.domain.local:5000/<imagerepo>/<imageName>
