@@ -402,5 +402,3 @@ kubectl label node <nodename> node-role.kubernetes.io/master-
 or worker role
 
 kubectl label node <nodename> node-role.kubernetes.io/worker-
-
-
