@@ -382,3 +382,23 @@ helm upgrade --install netnet gitlab/gitlab-agent \
 Advanced installation methods
 
 View the documentation for advanced installation. Ensure you have your access token available.
+
+
+################
+
+Add role to any node
+
+kubectl label node <nodename> node-role.kubernetes.io/master=master
+
+or worker role
+
+kubectl label node <nodename> node-role.kubernetes.io/worker=worker
+
+
+Remove role to any node
+
+kubectl label node <nodename> node-role.kubernetes.io/master-
+
+or worker role
+
+kubectl label node <nodename> node-role.kubernetes.io/worker-
