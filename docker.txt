@@ -1,3 +1,17 @@
+openssl req -x509 -out registry.alitech.local.crt -keyout registry.alitech.local.key \
+> -newkey rsa:2048 -nodes -sha256 \
+> -subj '/CN=registry.alitech.local' -extensions EXT -config <( \
+> printf "[dn]\nCN=registry.alitech.local\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:registry.alitech.local\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+
+
+docker run -d -p 5000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/registry.alitech.local.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/registry.alitech.local.key registry
+
+mkdir -p /etc/docker/certs.d/registry.alitech.local:5000/
+
+cp -r /etc/certs/registry.alitech.local.crt /etc/docker/certs.d/registry.alitech.local:5000/ca.crt
+
+
+
 Build image
 
 docker build . -t <imagerepo>/<imageName>
