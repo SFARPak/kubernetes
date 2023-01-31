@@ -1,14 +1,38 @@
-openssl req -x509 -out registry.alitech.local.crt -keyout registry.alitech.local.key \
-> -newkey rsa:2048 -nodes -sha256 \
-> -subj '/CN=registry.alitech.local' -extensions EXT -config <( \
-> printf "[dn]\nCN=registry.alitech.local\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:registry.alitech.local\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+openssl req -x509 -out hub.netnet.local.crt -keyout hub.netnet.local.key \
+-newkey rsa:2048 -nodes -sha256 \
+-subj '/CN=hub.netnet.local' -extensions EXT -config <( \
+printf "[dn]\nCN=hub.netnet.local\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:hub.netnet.local\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
 
 
-docker run -d -p 5000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/registry.alitech.local.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/registry.alitech.local.key registry
+docker run -d -p 5000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/hub.netnet.local.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/hub.netnet.local.key registry
 
-mkdir -p /etc/docker/certs.d/registry.alitech.local:5000/
+mkdir -p /etc/docker/certs.d/hub.netnet.local:5000/
 
-cp -r /etc/certs/registry.alitech.local.crt /etc/docker/certs.d/registry.alitech.local:5000/ca.crt
+mkdir -p /etc/certs/
+
+cp -r /etc/certs/hub.netnet.local.crt /etc/docker/certs.d/hub.netnet.local:5000/ca.crt
+
+
+## Secure the registry
+
+mkdir auth
+
+Create a password file with one entry for the user testuser, with password testpassword:
+
+docker run \
+  --entrypoint htpasswd \
+  httpd:2 -Bbn testuser testpassword > auth/htpasswd
+
+Stop the registry.
+
+docker container stop registry
+
+
+Start the registry with basic authentication.
+
+docker run -d -p 5000:5000 --restart=always --name registry -v "$(pwd)"/auth:/auth -e "REGISTRY_AUTH=htpasswd" -e "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm" -e REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.io.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.io.key registry
+
+
 
 
 
@@ -24,9 +48,14 @@ docker image ls
 
 Tag Image to Local registry
 
-docker tag <imagerepo>/<imageName> hub.domain.local:5000/<imagerepo>/<imageName>
+docker tag <imagerepo>/<imageName> r.alitech.io:5000/<imagerepo>/<imageName>
 
 
 Push to local registry
 
-docker push hub.domain.local:5000/<imagerepo>/<imageName>
+docker push r.alitech.io:5000/<imagerepo>/<imageName>
+
+
+Create Kubernets Secret for Private Registry LOGIN
+
+kubectl create secret docker-registry regcred --docker-server=r.alitech.io:5000 --docker-username=farhan --docker-password=farhan786

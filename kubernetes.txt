@@ -91,7 +91,7 @@ chown $(id -u):$(id -g) $HOME/admin.conf
 export KUBECONFIG=$HOME/admin.conf
 Whenever you are starting Master Node you may require to set the environment variable. Hence it’s a repetitive task for you. It can be set permanently using the following command.
 
-echo 'export KUBECONFIG=$HOME/admin.conf' >> $HOME/.bashrc
+echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> $HOME/.bashrc
 
 
 
@@ -352,3 +352,18 @@ spec:
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -out alitechingress-tls.crt -keyout alitechingress-tls.key -subj "/CN=beta.alitech.io/O=alitechingress-tls"
 
 kubectl create secret tls alitechingress-tls --namespace default --key alitechingress-tls.key --cert alitechingress-tls.crt
+
+
+## ks-api API Server Error --->>>  Only for AMD64
+
+sudo curl -L git.io/weave -o /usr/local/bin/weave
+
+sudo chmod a+x /usr/local/bin/weave
+
+mkdir -p /opt/cni/bin
+
+mkdir -p /etc/cni/net.d
+
+weave setup
+
+
