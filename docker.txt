@@ -59,3 +59,9 @@ docker push r.alitech.io:5000/<imagerepo>/<imageName>
 Create Kubernets Secret for Private Registry LOGIN
 
 kubectl create secret docker-registry regcred --docker-server=r.alitech.io:5000 --docker-username=farhan --docker-password=farhan786
+
+
+
+########## Prune everything
+
+docker system prune --volumes
