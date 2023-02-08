@@ -119,9 +119,17 @@ sudo systemctl restart docker
 
 apt install socat conntrack ebtables ipset
 
+sudo apt install resolvconf
+
 nano /etc/resolv.conf
  
 nameserver 1.1.1.1
+
+nano /etc/resolvconf/resolv.conf.d/head
+
+nameserver 1.1.1.1
+
+sudo resolvconf -u
 
 
 

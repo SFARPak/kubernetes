@@ -408,3 +408,8 @@ kubectl label node <nodename> node-role.kubernetes.io/worker-
 
 kubectl get pod -n default | grep Evicted | awk '{print $1}' | xargs kubectl delete pod -n default
 
+
+
+### Scale Deployement
+
+kubectl scale --replicas=<expected_replica_num> deployment <deployment_name>
