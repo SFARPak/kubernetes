@@ -255,6 +255,8 @@ kubectl --kubeconfig $KUBECONFIG -n cattle-system exec $(kubectl --kubeconfig $K
 132.145.56.200:30353    
 
 
+################ Kubernetes Copy Files and Operations
+
 kubectl exec --stdin --tty wordpress-mysql-f8f5ffb76-hzn26 -- /bin/bash
 
 kubectl exec -i -t -n default souqdelivery-5f87c7cd9b-2j52z
@@ -384,7 +386,7 @@ Advanced installation methods
 View the documentation for advanced installation. Ensure you have your access token available.
 
 
-################
+################ Kubernetes Roles
 
 Add role to any node
 
