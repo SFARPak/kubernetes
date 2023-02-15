@@ -255,14 +255,6 @@ kubectl --kubeconfig $KUBECONFIG -n cattle-system exec $(kubectl --kubeconfig $K
 132.145.56.200:30353    
 
 
-################ Kubernetes Copy Files and Operations
-
-kubectl exec --stdin --tty wordpress-mysql-f8f5ffb76-hzn26 -- /bin/bash
-
-kubectl exec -i -t -n default souqdelivery-5f87c7cd9b-2j52z
-
-kubectl cp wp-content wordpress-5dc55bbb77-4dmsj:/var/www/html
-
 
  mkdir -p $HOME/.kube
   sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
@@ -414,3 +406,15 @@ kubectl get pod -n openebs | grep Evicted | awk '{print $1}' | xargs kubectl del
 ### Delete All Terminating pods
 
 kubectl get pod -n kubesphere-monitoring-system | grep Terminating | awk '{print $1}' | xargs kubectl delete pod -n kubesphere-monitoring-system
+
+
+
+################ Kubernetes Copy Files and Operations
+
+kubectl exec --stdin --tty wordpress-mysql-f8f5ffb76-hzn26 -- /bin/bash
+
+kubectl exec -i -t -n default souqdelivery-5f87c7cd9b-2j52z
+
+kubectl cp wp-content wordpress-5dc55bbb77-4dmsj:/var/www/html
+
+kubectl scale --replicas=<expected_replica_num> deployment <deployment_name>
