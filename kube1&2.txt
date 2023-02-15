@@ -402,3 +402,13 @@ kubectl label node <nodename> node-role.kubernetes.io/master-
 or worker role
 
 kubectl label node <nodename> node-role.kubernetes.io/worker-
+
+
+### Delete All Evicted pods
+
+kubectl get pod -n openebs | grep Evicted | awk '{print $1}' | xargs kubectl delete pod -n openebs
+
+
+### Delete All Terminating pods
+
+kubectl get pod -n kubesphere-monitoring-system | grep Terminating | awk '{print $1}' | xargs kubectl delete pod -n kubesphere-monitoring-system

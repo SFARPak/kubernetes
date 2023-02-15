@@ -352,3 +352,9 @@ spec:
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -out alitechingress-tls.crt -keyout alitechingress-tls.key -subj "/CN=beta.alitech.io/O=alitechingress-tls"
 
 kubectl create secret tls alitechingress-tls --namespace default --key alitechingress-tls.key --cert alitechingress-tls.crt
+
+
+
+## LENS
+
+kubectl config view --minify --raw

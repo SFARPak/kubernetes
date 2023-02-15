@@ -1,14 +1,27 @@
-openssl req -x509 -out registry.alitech.local.crt -keyout registry.alitech.local.key \
-> -newkey rsa:2048 -nodes -sha256 \
-> -subj '/CN=registry.alitech.local' -extensions EXT -config <( \
-> printf "[dn]\nCN=registry.alitech.local\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:registry.alitech.local\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+########## Edit Hosts File
+
+nano /etc/hosts
+
+10.0.10.216     r.alitech.io   #<----- for Local
+
+XXX.XXX.XXX.XXX     r.alitech.io   #<----- for for Remote Needs to be secured
 
 
-docker run -d -p 5000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/registry.alitech.local.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/registry.alitech.local.key registry
 
-mkdir -p /etc/docker/certs.d/registry.alitech.local:5000/
+openssl req -x509 -out r.alitech.io.crt -keyout r.alitech.io.key \
+-newkey rsa:2048 -nodes -sha256 \
+-subj '/CN=r.alitech.io' -extensions EXT -config <( \
+printf "[dn]\nCN=r.alitech.io\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:r.alitech.io\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
 
-cp -r /etc/certs/registry.alitech.local.crt /etc/docker/certs.d/registry.alitech.local:5000/ca.crt
+mkdir -p /etc/certs/
+
+cp -r r.alitech.io.key r.alitech.io.crt /etc/certs/
+
+docker run -d -p 5000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.io.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.io.key registry
+
+mkdir -p /etc/docker/certs.d/r.alitech.io:5000/
+
+cp -r /etc/certs/r.alitech.io.crt /etc/docker/certs.d/r.alitech.io:5000/ca.crt
 
 
 
