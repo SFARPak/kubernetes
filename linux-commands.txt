@@ -1,0 +1,31 @@
+Resize the Disk first On Cloud Provider i.e. OCI, AWS
+
+Resizing Disk
+
+cfdisk
+
+Choose the partition to extend and select "Resize".
+
+Set the "New size".
+
+After pressing enter, you'll see screen with the following note "Partition [someNumber] resized":
+
+Next you'll need to "Write" (save) your changes:
+
+Quit cfdisk. When you exit you may see message "syncing disks".
+
+(19) Get filesystem name for next step
+
+(20) Extend filesystem
+
+
+df -h
+
+Filesystem      Size  Used Avail Use% Mounted on
+udev            5.8G     0  5.8G   0% /dev
+tmpfs           1.2G  8.5M  1.2G   1% /run
+/dev/sda2        97G   33G   65G  34% /
+tmpfs           5.9G   28K  5.9G   1% /dev/shm
+
+
+resize2fs /dev/sda2

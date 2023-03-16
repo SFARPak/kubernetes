@@ -17,11 +17,12 @@ mkdir -p /etc/certs/
 
 cp -r r.alitech.io.key r.alitech.io.crt /etc/certs/
 
-docker run -d -p 5000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.io.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.io.key registry
-
 mkdir -p /etc/docker/certs.d/r.alitech.io:5000/
 
 cp -r /etc/certs/r.alitech.io.crt /etc/docker/certs.d/r.alitech.io:5000/ca.crt
+
+docker run -d -p 5000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.io.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.io.key registry
+
 
 
 
@@ -43,3 +44,10 @@ docker tag <imagerepo>/<imageName> hub.domain.local:5000/<imagerepo>/<imageName>
 Push to local registry
 
 docker push hub.domain.local:5000/<imagerepo>/<imageName>
+
+
+## Delete everything
+
+du -sh * | sort -hr | head -n10
+
+docker system prune -a --volumes

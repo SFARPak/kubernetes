@@ -284,18 +284,23 @@ kind: Deployment ## change to DaemonSet
 #...
 externalIPs: [] ## change to below
 externalIPs:
-		  - 150.136.161.89
-		  - 132.145.214.76
-		  - 129.213.61.64
+		  - 130.61.213.253/32 
+      - 130.61.107.208/32
+	    - 130.61.76.215/32
+      - 130.61.217.38/32
+
+
+      
 	  
 	  
 
 #...
 loadBalancerSourceRanges: [] ## change to below
 loadBalancerSourceRanges:
-      - 150.136.161.89/32 
-      - 132.145.214.76/32
-	  - 129.213.61.64/32
+      - 130.61.213.253/32 
+      - 130.61.107.208/32
+	    - 130.61.76.215/32
+      - 130.61.217.38/32
 
 
 ## INSTALL INGRESS NGINX
@@ -381,7 +386,7 @@ kubectl create secret tls alitechingress-tls --namespace default --key alitechin
 kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
 
 
-kubectl patch storageclass openebs-hostpath -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 
 
 ## UPGRRADE LONGHORN

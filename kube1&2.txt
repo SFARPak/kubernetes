@@ -38,7 +38,7 @@ systemctl restart sshd
 
 
 DEFAULT STORAGE CLASS
-kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass openebs-device -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 
 to remove default-class
 kubectl patch storageclass standard -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
@@ -47,7 +47,7 @@ kubectl patch storageclass standard -p '{"metadata": {"annotations":{"storagecla
 
 TERMINATING NAMESPACE
 
-kubectl get namespace cattle-fleet-system -o json > tmp.json
+kubectl get namespace longhorn-system -o json > tmp.json
 curl -k -H "Content-Type: application/json" -X PUT --data-binary @tmp.json http://127.0.0.1:8001/api/v1/namespaces/longhorn-system/finalize
 
 
@@ -307,7 +307,12 @@ We need to install the pod network before the cluster can come up. As such we wa
 
 kubectl apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
 
+## LENS
 
+kubectl config view --minify --raw
+
+
+<<<<<< RESET >>>>>>
 
 sudo kubeadm reset
 sudo rm -rf /etc/kubernetes
@@ -343,9 +348,9 @@ spec:
 
 ## LETSENCRYPT & OPENSSL
 
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -out alitechingress-tls.crt -keyout alitechingress-tls.key -subj "/CN=beta.alitech.io/O=alitechingress-tls"
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -out souq-tls.crt -keyout souq-tls.key -subj "/CN=souqdelivery.pk/O=souq-tls"
 
-kubectl create secret tls alitechingress-tls --namespace default --key alitechingress-tls.key --cert alitechingress-tls.crt
+kubectl create secret tls souq-tls --namespace default --key souq-tls.key --cert souq-tls.crt
 
 
 
@@ -400,12 +405,12 @@ kubectl label node <nodename> node-role.kubernetes.io/worker-
 
 ### Delete All Evicted pods
 
-kubectl get pod -n openebs | grep Evicted | awk '{print $1}' | xargs kubectl delete pod -n openebs
+kubectl get pod -n longhorn-system | grep Evicted | awk '{print $1}' | xargs kubectl delete pod -n longhorn-system
 
 
 ### Delete All Terminating pods
 
-kubectl get pod -n kubesphere-monitoring-system | grep Terminating | awk '{print $1}' | xargs kubectl delete pod -n kubesphere-monitoring-system
+kubectl get pod -n longhorn-system | grep Terminating | awk '{print $1}' | xargs kubectl delete pod -n kubesphere-monitoring-system
 
 
 
