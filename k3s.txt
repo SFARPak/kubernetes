@@ -1,0 +1,330 @@
+sudo apt update -y
+
+sudo reboot
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+apt install -y socat conntrack ebtables ipset
+
+apt install resolvconf
+
+nano /etc/resolv.conf
+ 
+nameserver 1.1.1.1
+
+sudo resolvconf -u
+
+<<<<<< Disable Firewall Completely Ubuntu 22
+
+sudo iptables -F
+sudo netfilter-persistent save
+
+
+<<<<< Use Firewall Rules Failed Mostly
+
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 30880 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 22 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 2379:2380 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 6443 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p udp --dport 444 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5000 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p udp --dport 16443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 51820:51821 -j ACCEPT
+
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9501 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9502 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9808 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 10251 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 10252 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 10255 -j ACCEPT
+
+
+sudo netfilter-persistent save
+
+
+
+## 3. Installing runtime or Docker Engine
+Update the apt package index and install packages to allow apt to use a repository over HTTPS:
+
+sudo apt-get update
+
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release -y
+	
+	
+	
+Add Docker’s official GPG key:
+
+ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+ 
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  
+Install Docker Engine
+
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y
+
+
+## 4. Configure systemd driver
+create or edit /etc/docker/daemon.json
+
+nano /etc/docker/daemon.json
+
+{
+  "exec-opts": ["native.cgroupdriver=systemd"]
+}
+
+
+sudo systemctl restart docker
+
+
+
+
+sudo apt install -y curl wget
+
+mkdir -p /usr/local/bin/
+
+curl -sfL https://get.k3s.io | sh - 
+
+>>>> Without Traefik <<<<
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -s -
+
+
+>>>> Specific version  <<<<
+
+Rancher <<<<
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.27.10+k3s2 sh -s - server --cluster-init
+
+sudo systemctl status k3s
+
+mkdir ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && sudo chown $USER ~/.kube/config
+sudo chmod 600 ~/.kube/config && export KUBECONFIG=~/.kube/config
+
+
+echo 'export KUBECONFIG=~/.kube/config' >> $HOME/.bashrc
+
+
+  kubectl get nodes
+
+kubectl cluster-info
+
+Generate token on master
+
+cat /var/lib/rancher/k3s/server/node-token
+
+
+To install additional agent nodes and add them to the cluster, run the installation script with the
+ K3S_URL and K3S_TOKEN environment variables. Here is an example showing how to join an agent:
+
+mkdir -p /usr/local/bin/
+
+ curl -sfL https://get.k3s.io | K3S_URL=https://master.backup.us.alitech.io:6443 K3S_TOKEN=K10694a20a13895c6d32a683368d83eb47c1df8c6e86868b60f860ab5e2fcd6a797::server:8ef47c4951c8e0874407ab24f1b6c3e6 sh -
+
+
+ <<< Specific version >>>
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.27.10+k3s2 K3S_URL=https://master.backup.us.alitech.io:6443 K3S_TOKEN=K10a7ef29b780bfd1f9900a69a192e5117ce876235c266ebd454d14cdce29fa8d34::server:12407d71723063ed0a3a7e5a58bdd06a sh -
+
+Setting the K3S_URL parameter causes the installer to configure K3s as an agent, instead of a server. 
+The K3s agent will register with the K3s server listening at the supplied URL. The value to use for
+ K3S_TOKEN is stored at /var/lib/rancher/k3s/server/node-token on your server node.
+
+
+
+<<<< RANCHER JOIN node
+
+mkdir -p /usr/local/bin/
+
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.27.10+k3s2 K3S_URL=https://master..alitech.io:6443 K3S_TOKEN=K105b75ef6b69f5545cba2278fc6c4e33f4608f3b496642d964f1c87d092bececc5::server:850c553403adb64b06a837213e1ac43a sh -
+
+
+## HELM INSTALL
+
+curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
+sudo apt-get install apt-transport-https --yes
+echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
+
+
+
+
+## POD Network <<<< for K3S ONLY  <<<< not required
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-backend=none --disable-network-policy --cluster-cidr=192.168.0.0/16" sh -
+
+
+
+Weave <<<< not required
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml
+
+
+Weave Alternative:
+
+kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.4/manifests/tigera-operator.yaml
+kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.4/manifests/custom-resources.yaml
+
+
+
+
+ 
+## LOAD BALANCER
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.9.6/manifests/namespace.yaml
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.9.6/manifests/metallb.yaml
+
+# New <<<< Not Required for K3s
+kubectl delete -f https://raw.githubusercontent.com/metallb/metallb/v0.13.9/config/manifests/metallb-native.yaml
+
+##layer2metallb.yaml
+
+  nano layer2metallb.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+	  ########### Update for each region
+      - 130.162.180.41/32 
+      - 143.47.239.48/32
+
+	  
+	  
+	  
+	
+kubectl apply -f layer2metallb.yaml
+	  
+	  
+	  
+## Metallb secret
+kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
+
+
+
+## HELM INSTALL
+
+curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
+sudo apt-get install apt-transport-https --yes
+echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
+
+## Traefik Ingress - Already Installed
+
+
+## CERT MANAGER with LETSENCRYPT
+
+kubectl create ns cert-manager
+
+kubectl create -f https://github.com/jetstack/cert-manager/releases/download/v1.12.0/cert-manager.yaml
+
+
+
+## LETSENCRYPT prod-issuer.yaml
+
+nano prod-issuer.yaml
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: sales@alitech.io
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - selector: {}
+      http01:
+        ingress:
+          class: traefik
+
+
+
+kubectl apply -f prod-issuer.yaml
+
+
+
+
+## LONGHORN <<<< WORKING BEST with K3s
+
+kubectl create -f https://raw.githubusercontent.com/longhorn/longhorn/v1.5.3/deploy/longhorn.yaml
+
+## DEFAULT STORAGE CLASS
+
+kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+
+
+
+
+## LONGHORN ALTERNATIVE OPENEBS
+
+https://openebs.io/docs
+
+kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+
+
+
+
+
+
+
+<<<<<< PRIVATE REGISTRY WITH K3S >>>>>>
+
+
+
+
+
+
+<<<<<< RESET >>>>>>
+
+/usr/local/bin/k3s-killall.sh
+
+Uninstalling Agents
+
+/usr/local/bin/k3s-agent-uninstall.sh
+
+sudo kubeadm reset
+sudo rm -rf /etc/kubernetes
+sudo rm -rf /etc/cni/net.d
+sudo rm -rf /var/lib/kubelet
+sudo rm -rf /var/lib/etcd
+sudo rm -rf $HOME/.kube
+
+sudo rm -rf /var/lib/rancher
+
+sudo rm -rf /usr/local/bin/
+
+sudo apt autoremove

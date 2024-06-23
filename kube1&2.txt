@@ -51,6 +51,17 @@ kubectl get namespace longhorn-system -o json > tmp.json
 curl -k -H "Content-Type: application/json" -X PUT --data-binary @tmp.json http://127.0.0.1:8001/api/v1/namespaces/longhorn-system/finalize
 
 
+TERMINATING PV, PVC
+
+kubectl edit pv (pv name)
+
+Find the following in the manifest file
+
+finalizers:
+  -  kubernetes.io/pv-protection
+
+
+kubectl delete pv (pv name) --grace-period=0 --force
 
 
 
@@ -98,8 +109,27 @@ echo 'export KUBECONFIG=$HOME/admin.conf' >> $HOME/.bashrc
 remove all taints from master
 kubectl patch node master -p '{"spec":{"taints":[]}}'
 
+New from ChatGPT
+#!/bin/bash
 
+# Save existing rules
+sudo iptables-save > ~/iptables-rules
 
+# Modify rules: remove DROP and REJECT lines
+grep -v "DROP" ~/iptables-rules > ~/tmpfile && mv ~/tmpfile ~/iptables-rules-mod
+grep -v "REJECT" ~/iptables-rules-mod > ~/tmpfile && mv ~/tmpfile ~/iptables-rules-mod
+
+# Apply the modifications
+sudo iptables-restore < ~/iptables-rules-mod
+
+# Check the current rules
+sudo iptables -L
+
+# Save changes persistently
+sudo netfilter-persistent save
+
+# Restart iptables
+sudo systemctl restart iptables
 
 
 
@@ -143,7 +173,7 @@ sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 4789 -j ACCEPT
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 5473 -j ACCEPT
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9500 -j ACCEPT
 
-tcp 80,443,9090,9100,9443,9796,8080,8001,2376,2379-2380,6443,6783-6784,9098-9100,179,30000-32767,10250-10258,53,5000,5080,5432,111,8443,8472,45014
+tcp 80,443,9090,9100,9443,9796,8080,8001,2376,2379-2380,6443,6783-6784,9098-9100,179,30000-32767,10250-10258,53,5000,5080,5432,111,8443,8472,8089,45014
 udp 53,6783-6784
 
 
@@ -186,6 +216,10 @@ sudo iptables -I INPUT -m state --state NEW -p tcp --dport 45014 -j ACCEPT
 REDIS
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 6379 -j ACCEPT
 
+
+sudo apt-get remove kubelet=1.21.5-00 kubeadm=1.21.5-00 kubectl=1.21.5-00
+
+
 mkdir -p $HOME/.kube
   sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
   sudo chown $(id -u):$(id -g) $HOME/.kube/config
@@ -219,6 +253,34 @@ RUN chmod a+rw db.sqlite3 $WORK_HOME/db.sqlite3
 
 
 Kubernetes dashboard
+nano k8s-serviceaccount.yml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: administrator
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: administrator
+  namespace: kube-system
+
+kubectl apply -f k8s-serviceaccount.yml
+
+kubectl describe sa administrator -n kube-system
+
+kubectl describe secret administrator-token-<<<%%%%%%%>>> -n kube-system
+
+
+
 eyJhbGciOiJSUzI1NiIsImtpZCI6IlFTMEhGMk9rbGpFcmxyUUZNWGlJR0lDd2dST1dEbHhtektBNzJtaXZodkEifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbmlzdHJhdG9yLXRva2VuLXJkcmN2Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluaXN0cmF0b3IiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiIyYzA4Mzc5Zi0zM2ExLTRmMzAtOTUyMi03NTc4Nzk0ZTczYzAiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW5pc3RyYXRvciJ9.n3HaNzBPNPrqVUT5fO7aN-fK32avUz2JsQF-s-RedoxkZ1BjuQrU9dL9UZrj8VfitmG6X5nwoxcj2i8KFBqGCx2Th4BTRoNafMLhILEEmOQUlxhYUVWap84DP4Kp5Z3soISqhRR97KijPGkYXiTFzoJ-EkXQ_ZMN-Ou0sdK59Wb7v00v7Y1mkmLcQZmI2JZUM2EBtPlHI5V8SfUl0Em5xL8OzIUAj16hrWFw1FRd-VNleL0JfPCr7i8KSd7HxkHpJwCT20x2VR_CbPbpZajB3LqG1bqg6Fk9OJh6_tNW5RhJpYgvFnhQ4BPKZph369gKf_9lU6Zxdlkgmrb1fRxvlw
 
 
@@ -348,9 +410,9 @@ spec:
 
 ## LETSENCRYPT & OPENSSL
 
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -out souq-tls.crt -keyout souq-tls.key -subj "/CN=souqdelivery.pk/O=souq-tls"
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -out patriots-tls.crt -keyout patriots-tls.key -subj "/CN=*.patriotsengineering.com/O=patriots-tls"
 
-kubectl create secret tls souq-tls --namespace default --key souq-tls.key --cert souq-tls.crt
+kubectl create secret tls patriots-tls --namespace default --key patriots-tls.key --cert patriots-tls.crt
 
 
 
@@ -410,7 +472,7 @@ kubectl get pod -n longhorn-system | grep Evicted | awk '{print $1}' | xargs kub
 
 ### Delete All Terminating pods
 
-kubectl get pod -n longhorn-system | grep Terminating | awk '{print $1}' | xargs kubectl delete pod -n kubesphere-monitoring-system
+kubectl get pod -n default | grep Pending | awk '{print $1}' | xargs kubectl delete pod -n default
 
 
 

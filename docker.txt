@@ -8,20 +8,149 @@ XXX.XXX.XXX.XXX     r.alitech.io   #<----- for for Remote Needs to be secured
 
 
 
-openssl req -x509 -out r.alitech.io.crt -keyout r.alitech.io.key \
--newkey rsa:2048 -nodes -sha256 \
+openssl req -x509 -days 1825 -out r.alitech.io.crt -keyout r.alitech.io.key \
+-newkey rsa:4096 -nodes -sha256 \
 -subj '/CN=r.alitech.io' -extensions EXT -config <( \
 printf "[dn]\nCN=r.alitech.io\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:r.alitech.io\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+
+>>> do this on all nodes <<<
+
+docker stop registry
 
 mkdir -p /etc/certs/
 
 cp -r r.alitech.io.key r.alitech.io.crt /etc/certs/
 
-mkdir -p /etc/docker/certs.d/r.alitech.io:5000/
+mkdir -p /etc/docker/certs.d/r.alitech.io:9000/
 
-cp -r /etc/certs/r.alitech.io.crt /etc/docker/certs.d/r.alitech.io:5000/ca.crt
+cp -r /etc/certs/r.alitech.io.crt /etc/docker/certs.d/r.alitech.io:9000/ca.crt
 
-docker run -d -p 5000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.io.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.io.key registry
+update-ca-certificates
+
+service docker restart
+
+
+docker start registry
+
+OR
+
+docker run -d -p 9000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.io.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.io.key registry
+
+
+Net Net >>>
+
+openssl req -x509 -out hub.netnetapp.local.crt -keyout hub.netnetapp.local.key \
+-newkey rsa:2048 -nodes -sha256 \
+-subj '/CN=hub.netnetapp.local' -extensions EXT -config <( \
+printf "[dn]\nCN=hub.netnetapp.local\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:hub.netnetapp.local\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+
+
+mkdir -p /etc/docker/certs.d/hub.netnetapp.local:9000/
+
+mkdir -p /etc/certs/
+
+cp -r /home/ubuntu/docker/* /etc/certs/
+
+cp -r /etc/certs/hub.netnetapp.local.crt /etc/docker/certs.d/hub.netnetapp.local:9000/ca.crt
+
+docker run -d -p 9000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/hub.netnetapp.local.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/hub.netnetapp.local.key registry
+
+
+
+
+
+>>>>> OR <<<<<
+
+docker run -d -p 9000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.io.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.io.key registry
+
+
+K3S only <<<<<
+
+sudo mkdir -p /usr/local/share/ca-certificates/r.alitech.io:9000/
+
+sudo cp /home/ubuntu/docker/* /usr/local/share/ca-certificates/r.alitech.io:9000/
+
+cp -r /etc/certs/r.alitech.io.crt /usr/local/share/ca-certificates/r.alitech.io:9000/ca.crt
+
+sudo update-ca-certificates
+
+nano /etc/rancher/k3s/registries.yaml
+
+mirrors:
+  hub.netnetapp.local:9000:
+    endpoint:
+      - "https://hub.netnetapp.local:9000"
+configs:
+  registry.cube.local:
+    tls:
+      ca_file: "/usr/local/share/ca-certificates/r.alitech.io.crt"
+      key_file: "/usr/local/share/ca-certificates/r.alitech.io.key"
+
+REBOOT
+
+restart the K3s service to let the change in effect.
+
+
+mirrors:
+  r.alitech.io:9000:
+    endpoint:
+      - "https://r.alitech.io:9000"
+configs:
+  registry.cube.local:
+    tls:
+      ca_file: "/usr/local/share/ca-certificates/r.alitech.io.crt"
+      key_file: "/usr/local/share/ca-certificates/r.alitech.io.key"
+
+REBOOT
+
+
+
+
+
+LOCAL <<<
+openssl req -x509 -out r.alitech.local.crt -keyout r.alitech.local.key \
+-newkey rsa:2048 -nodes -sha256 \
+-subj '/CN=r.alitech.local' -extensions EXT -config <( \
+printf "[dn]\nCN=r.alitech.local\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:r.alitech.local\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+
+
+
+>>> do this on all nodes <<<
+
+docker stop registry
+
+mkdir -p /etc/certs/
+
+cp -r r.alitech.local.key r.alitech.local.crt /etc/certs/
+
+mkdir -p /etc/docker/certs.d/r.alitech.local:9000/
+
+cp -r /etc/certs/r.alitech.local.crt /etc/docker/certs.d/r.alitech.local:9000/ca.crt
+
+update-ca-certificates
+
+service docker restart
+
+
+docker start registry
+
+>>>>> OR <<<<<
+
+docker run -d -p 9000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.local.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.local.key registry
+
+
+
+>>>>> Cloudflare - Origin certificates <<<<<
+
+cp -r r.alitech.io-cloudflare.key r.alitech.io-cloudflare.crt /etc/certs/
+
+cp -r /etc/certs/r.alitech.io-cloudflare.crt /etc/docker/certs.d/r.alitech.io:9000/ca.crt
+
+docker start registry
+
+>>>>> OR <<<<<
+
+docker run -d -p 9000:5000 --restart=always --name registry -v /etc/certs:/etc/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/etc/certs/r.alitech.io-cloudflare.crt -e REGISTRY_HTTP_TLS_KEY=/etc/certs/r.alitech.io-cloudflare.key registry
 
 
 
@@ -38,16 +167,21 @@ docker image ls
 
 Tag Image to Local registry
 
-docker tag <imagerepo>/<imageName> hub.domain.local:5000/<imagerepo>/<imageName>
+docker tag <imagerepo>/<imageName> hub.domain.local:9000/<imagerepo>/<imageName>
 
 
 Push to local registry
 
-docker push hub.domain.local:5000/<imagerepo>/<imageName>
+docker push hub.domain.local:9000/<imagerepo>/<imageName>
 
 
 ## Delete everything
 
 du -sh * | sort -hr | head -n10
 
+
+docker system prune -a
 docker system prune -a --volumes
+
+
+sudo k3s crictl rmi --prune

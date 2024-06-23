@@ -1,0 +1,388 @@
+sudo passwd
+
+nano /etc/hosts
+
+150.136.107.243	master.ks1.us.alitech.io       master
+129.213.105.57	ks2.us.alitech.io       ks2
+150.136.77.132	ks3.us.alitech.io       ks3
+
+hostnamectl set-hostname master
+
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+
+if want to keep UFW
+
+ufw allow 80
+ufw allow 443
+ufw allow 9098
+ufw allow 9099
+ufw allow 9090
+ufw allow 9100
+ufw allow 9443
+ufw allow 9796
+ufw allow 8080
+ufw allow 8001
+ufw allow 2376
+ufw allow 2379:2380/tcp
+ufw allow 6443
+ufw allow 6783:6784/tcp
+ufw allow 9098:9100/tcp
+ufw allow 179
+ufw allow 30000:32767/tcp
+ufw allow 10250:10258/tcp
+ufw allow 53
+ufw allow 53/udp
+ufw allow 5000
+ufw allow 5080
+ufw allow 5432
+ufw allow 111
+ufw allow 8443
+ufw allow 8472
+ufw allow 45014
+ufw allow 9500
+
+
+Enter the following commands on each worker node:
+ufw allow 10251
+ufw allow 10255
+
+
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 22 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9098 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9099 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9090 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9100 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9443 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9796 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8080 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8001 -j ACCEPT
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 2376 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 2379:2380 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 6443 -j ACCEPT  
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p udp --dport 6783:6784 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9098:9100 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 179 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 30000:32767 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 10250:10258 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p udp --dport 53 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5000 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5080 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 5432 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 111 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8089 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 8472 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 45014 -j ACCEPT 
+sudo iptables -I INPUT -m state --state NEW -p tcp --dport 9500 -j ACCEPT
+sudo netfilter-persistent save
+
+
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+
+# Add Docker's official GPG key:
+sudo apt-get update
+sudo apt-get install ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+
+
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+## 4. Configure systemd driver
+create or edit /etc/docker/daemon.json
+
+nano /etc/docker/daemon.json
+
+{
+  "exec-opts": ["native.cgroupdriver=systemd"]
+}
+
+
+sudo systemctl restart docker
+
+
+
+
+sudo apt-get update
+# apt-transport-https may be a dummy package; if so, you can skip that package
+sudo apt-get install -y apt-transport-https ca-certificates curl
+
+
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.22/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+
+# This overwrites any existing configuration in /etc/apt/sources.list.d/kubernetes.list
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+
+sudo apt-get update
+
+sudo apt-get remove kubelet=1.28.0-1.1 kubeadm=1.28.0-1.1 kubectl=1.28.0-1.1
+
+sudo apt-get install kubelet kubeadm kubectl
+
+<<<< ---- ## Run this ONLY on Control Plane ## ---- >>>>
+
+CERTKEY=$(kubeadm certs certificate-key)
+
+echo $CERTKEY
+
+sudo kubeadm init --apiserver-cert-extra-sans=master.netnetapp.local,10.0.0.48 --pod-network-cidr=10.32.0.0/12 --control-plane-endpoint=master.netnetapp.local --upload-certs --certificate-key=$CERTKEY --skip-phases=addon/kube-proxy | tee kubeadm-init.out
+
+>>> AFTER SUCCESS IMMIDIATELY APPLY <<<
+
+kubeadm init phase addon kube-proxy --pod-network-cidr=10.32.0.0/12 --control-plane-endpoint=master.netnetapp.local
+
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+echo 'export KUBECONFIG=~/.kube/config' >> $HOME/.bashrc
+
+
+
+apt install resolvconf
+
+nano /etc/resolv.conf
+ 
+nameserver 1.1.1.1
+
+sudo resolvconf -u
+
+
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml
+
+or Latest
+
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+
+
+
+## REMOVE TAINTS
+kubectl taint nodes --all node-role.kubernetes.io/master-
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+
+>>>>> REBOOT <<<<<
+
+
+
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+
+
+
+kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
+
+
+
+##layer2metallb.yaml
+
+nano layer2metallb.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+	  ########### Update for each region
+      - 130.61.213.253/32 
+      - 130.61.107.208/32
+	    - 130.61.76.215/32
+      - 130.61.217.38/32
+	  
+	  
+	  
+	
+kubectl apply -f layer2metallb.yaml
+
+
+
+
+
+## HELM INSTALL
+
+curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
+sudo apt-get install apt-transport-https --yes
+echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+sudo apt-get update
+sudo apt-get install helm
+
+
+## INGRESS CONTROLLER - NGINX
+
+kubectl create ns ingress-nginx
+
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+helm repo update
+
+helm show values ingress-nginx/ingress-nginx > ingress-nginx.yaml
+
+
+## EDIT ingress-nginx.yaml
+
+nano ingress-nginx.yaml
+
+hostNetwork: true ## change to false
+#...
+hostPort:
+  enabled: false ## change to true
+#...
+kind: Deployment ## change to DaemonSet
+#...
+externalIPs: [] ## change to below
+externalIPs:
+		  - 130.61.213.253/32 
+      - 130.61.107.208/32
+	    - 130.61.76.215/32
+      - 130.61.217.38/32
+
+
+      
+	  
+	  
+
+#...
+loadBalancerSourceRanges: [] ## change to below
+loadBalancerSourceRanges:
+      - 130.61.213.253/32 
+      - 130.61.107.208/32
+	    - 130.61.76.215/32
+      - 130.61.217.38/32
+
+
+## INSTALL INGRESS NGINX
+
+helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --values ingress-nginx.yaml
+
+
+
+
+## CERT MANAGER with LETSENCRYPT
+
+kubectl create ns cert-manager
+
+kubectl create -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.yaml
+
+
+
+kubectl create -f https://github.com/jetstack/cert-manager/releases/download/v1.13.3/cert-manager.yaml
+
+
+
+## LETSENCRYPT prod-issuer.yaml
+
+nano prod-issuer.yaml
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: sales@alitech.io
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - selector: {}
+      http01:
+        ingress:
+          class: nginx
+
+
+
+kubectl apply -f prod-issuer.yaml
+
+
+<<< Alternative
+
+kubectl -n kubesphere-system create -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: sales@alitech.io
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - selector: {}
+      http01:
+        ingress:
+          class: nginx
+EOF
+
+
+
+## UPGRRADE LONGHORN
+
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.5.3/deploy/longhorn.yaml
+
+
+
+
+## DEFAULT STORAGE CLASS
+
+kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
+
+
+kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+
+
+
+<<<<<< RESET >>>>>>
+
+sudo kubeadm reset
+sudo rm -rf /etc/kubernetes
+sudo rm -rf /etc/cni/net.d
+sudo rm -rf /var/lib/kubelet
+sudo rm -rf /var/lib/etcd
+sudo rm -rf $HOME/.kube
+
+
+
+
+

@@ -11,11 +11,19 @@ sudo passwd
 
 nano /etc/hosts
 
-10.0.10.139	master.us.alitech.io       master
-10.0.20.170 node1.us.alitech.io       node1
-10.0.30.24	node2.us.alitech.io       node2
+10.0.10.107	master.us.alitech.io       master
+10.0.20.217 node2.us.alitech.io       node2
+10.0.3.177	node3.us.alitech.io       node3
 
 hostnamectl set-hostname master
+
+on master
+ssh-keygen -t rsa
+
+on nodes
+nano ~/.ssh/authorized_keys
+nano /etc/ssh/sshd_config
+systemctl restart sshd
 
 
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -62,7 +70,7 @@ sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 111 -j ACCEPT
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8443 -j ACCEPT 
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8472 -j ACCEPT 
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 45014 -j ACCEPT 
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 9500 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 30880 -j ACCEPT
 sudo netfilter-persistent save
 
 
@@ -108,11 +116,15 @@ sudo systemctl restart docker
 
 
 
-apt install socat conntrack ebtables ipset
+apt install -y socat conntrack ebtables ipset
+
+apt install resolvconf
 
 nano /etc/resolv.conf
  
 nameserver 1.1.1.1
+
+sudo resolvconf -u
 
 
 

@@ -108,12 +108,16 @@ sudo apt-get install -y apt-transport-https ca-certificates curl
 
 Download the Google Cloud public signing key:
 
-sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+# Run as root user
+curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
 
-
-Add the Kubernetes apt repository:
+# NOTE 20230824: 
+# Run this too to add another pubkey, sometimes above key is invalid
+curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://dl.k8s.io/apt/doc/apt-key.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+
 
 sudo apt-get update
 sudo apt-get install -y kubelet=1.21.5-00 kubeadm=1.21.5-00 kubectl=1.21.5-00
@@ -128,7 +132,7 @@ echo $CERTKEY
 
 
 ## US MASTER
-sudo kubeadm init --apiserver-cert-extra-sans=master.de.alitech.io,10.0.10.216,10.0.20.30,10.0.40.202,10.0.50.76 --pod-network-cidr=10.32.0.0/12 --control-plane-endpoint=master.de.alitech.io --upload-certs --certificate-key=$CERTKEY
+sudo kubeadm init --apiserver-cert-extra-sans=master.node1.ukjp.alitech.local,10.0.0.108,10.0.2.12,10.0.3.235 --pod-network-cidr=10.32.0.0/12 --control-plane-endpoint=master.node1.ukjp.alitech.local --upload-certs --certificate-key=$CERTKEY
 
 ## JP MASTER
 sudo kubeadm init --apiserver-cert-extra-sans=master.ks1.uksjp.alitech.io,132.145.53.2,141.147.74.87,132.226.130.45 --pod-network-cidr=10.32.0.0/12 --control-plane-endpoint=master.ks1.uksjp.alitech.io --upload-certs --certificate-key=$CERTKEY
@@ -161,7 +165,7 @@ kubeadm join master.ks1.us.alitech.io:6443 --token sf8rq4.kmjnjqfouba4mma5 \
 
 
 ## POD Network
-kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml
+kubectl create -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml
 
 Update
 
@@ -188,8 +192,7 @@ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.9.6/manife
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.9.6/manifests/metallb.yaml
 
 # New 
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.9/config/manifests/metallb-native.yaml
-
+ 
 ##layer2metallb.yaml
 
 nano layer2metallb.yaml
@@ -330,7 +333,7 @@ metallb-system   speaker-jr76f                    1/1     Running   0          1
 
 kubectl create ns cert-manager
 
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.3.1/cert-manager.yaml
+kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v1.3.1/cert-manager.yaml
 
 NAMESPACE        NAME                                       READY   STATUS    RESTARTS   AGE
 cert-manager     cert-manager-7dd5854bb4-j2slh              1/1     Running   0          25s
@@ -389,7 +392,7 @@ kubectl create secret tls alitechingress-tls --namespace default --key alitechin
 kubectl apply -f https://openebs.github.io/charts/openebs-operator.yaml
 
 
-kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
 
 
 ## UPGRRADE LONGHORN
